@@ -1,12 +1,12 @@
 (asdf:defsystem :chancery
-  :description "A library for procedurally generating data, inspired by Tracery."
+  :description "A library for procedurally generating text, inspired by Tracery."
 
   :author "Steve Losh <steve@stevelosh.com>"
 
   :license "MIT/X11"
   :version "1.0.0"
 
-  :depends-on ()
+  :depends-on (:named-readtables)
 
   :serial t
   :components ((:module "vendor" :serial t
@@ -14,4 +14,5 @@
                              (:file "quickutils")))
                (:file "package")
                (:module "src" :serial t
-                :components ((:file "chancery")))))
+                :components ((:file "readtable")
+                             (:file "chancery")))))

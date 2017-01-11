@@ -2,7 +2,7 @@
 ;;;; See http://quickutil.org for details.
 
 ;;;; To regenerate:
-;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:CURRY :ENSURE-BOOLEAN :ENSURE-GETHASH :ENSURE-LIST :MKSTR :ONCE-ONLY :RCURRY :SYMB :WITH-GENSYMS) :ensure-package T :package "CHANCERY.QUICKUTILS")
+;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:CURRY :ENSURE-BOOLEAN :ENSURE-GETHASH :ENSURE-LIST :FLIP :MKSTR :ONCE-ONLY :RCURRY :RIFFLE :SPLIT-SEQUENCE :SYMB :WITH-GENSYMS) :ensure-package T :package "CHANCERY.QUICKUTILS")
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (unless (find-package "CHANCERY.QUICKUTILS")
@@ -15,8 +15,9 @@
 (when (boundp '*utilities*)
   (setf *utilities* (union *utilities* '(:MAKE-GENSYM-LIST :ENSURE-FUNCTION
                                          :CURRY :ENSURE-BOOLEAN :ENSURE-GETHASH
-                                         :ENSURE-LIST :MKSTR :ONCE-ONLY :RCURRY
-                                         :SYMB :STRING-DESIGNATOR :WITH-GENSYMS))))
+                                         :ENSURE-LIST :FLIP :MKSTR :ONCE-ONLY
+                                         :RCURRY :RIFFLE :SPLIT-SEQUENCE :SYMB
+                                         :STRING-DESIGNATOR :WITH-GENSYMS))))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun make-gensym-list (length &optional (x "G"))
     "Returns a list of `length` gensyms, each generated as if with a call to `make-gensym`,
@@ -83,6 +84,12 @@ already in the table."
         (list list)))
   
 
+  (defun flip (f)
+    "Return a function whose argument order of a binary function `f` is reversed."
+    #'(lambda (y x)
+        (funcall f x y)))
+  
+
   (defun mkstr (&rest args)
     "Receives any number of objects (string, symbol, keyword, char, number), extracts all printed representations, and concatenates them all into one string.
 
@@ -140,6 +147,134 @@ with and `arguments` to `function`."
         (multiple-value-call fn (values-list more) (values-list arguments)))))
   
 
+  (defun riffle (list obj)
+    "Insert the item `obj` in between each element of `list`."
+    (loop :for (x . xs) :on list
+          :collect x
+          :when xs
+            :collect obj))
+  
+
+  (defun split-from-end (position-fn sequence start end count remove-empty-subseqs)
+    (loop
+      :for right := end :then left
+      :for left := (max (or (funcall position-fn sequence right) -1)
+                        (1- start))
+      :unless (and (= right (1+ left))
+                   remove-empty-subseqs) ; empty subseq we don't want
+        :if (and count (>= nr-elts count))
+          ;; We can't take any more. Return now.
+          :return (values (nreverse subseqs) right)
+      :else
+        :collect (subseq sequence (1+ left) right) into subseqs
+        :and :sum 1 :into nr-elts
+      :until (< left start)
+      :finally (return (values (nreverse subseqs) (1+ left)))))
+
+  (defun split-from-start (position-fn sequence start end count remove-empty-subseqs)
+    (let ((length (length sequence)))
+      (loop
+        :for left := start :then (+ right 1)
+        :for right := (min (or (funcall position-fn sequence left) length)
+                           end)
+        :unless (and (= right left)
+                     remove-empty-subseqs) ; empty subseq we don't want
+          :if (and count (>= nr-elts count))
+            ;; We can't take any more. Return now.
+            :return (values subseqs left)
+        :else
+          :collect (subseq sequence left right) :into subseqs
+          :and :sum 1 :into nr-elts
+        :until (>= right end)
+        :finally (return (values subseqs right)))))
+  
+  (macrolet ((check-bounds (sequence start end)
+               (let ((length (gensym (string '#:length))))
+                 `(let ((,length (length ,sequence)))
+                    (check-type ,start unsigned-byte "a non-negative integer")
+                    (when ,end (check-type ,end unsigned-byte "a non-negative integer or NIL"))
+                    (unless ,end
+                      (setf ,end ,length))
+                    (unless (<= ,start ,end ,length)
+                      (error "Wrong sequence bounds. start: ~S end: ~S" ,start ,end))))))
+
+    (defun split-sequence (delimiter sequence &key (start 0) (end nil) (from-end nil)
+                                                   (count nil) (remove-empty-subseqs nil)
+                                                   (test #'eql) (test-not nil) (key #'identity))
+      "Return a list of subsequences in seq delimited by delimiter.
+
+If :remove-empty-subseqs is NIL, empty subsequences will be included
+in the result; otherwise they will be discarded.  All other keywords
+work analogously to those for CL:SUBSTITUTE.  In particular, the
+behaviour of :from-end is possibly different from other versions of
+this function; :from-end values of NIL and T are equivalent unless
+:count is supplied. The second return value is an index suitable as an
+argument to CL:SUBSEQ into the sequence indicating where processing
+stopped."
+      (check-bounds sequence start end)
+      (cond
+        ((and (not from-end) (null test-not))
+         (split-from-start (lambda (sequence start)
+                             (position delimiter sequence :start start :key key :test test))
+                           sequence start end count remove-empty-subseqs))
+        ((and (not from-end) test-not)
+         (split-from-start (lambda (sequence start)
+                             (position delimiter sequence :start start :key key :test-not test-not))
+                           sequence start end count remove-empty-subseqs))
+        ((and from-end (null test-not))
+         (split-from-end (lambda (sequence end)
+                           (position delimiter sequence :end end :from-end t :key key :test test))
+                         sequence start end count remove-empty-subseqs))
+        ((and from-end test-not)
+         (split-from-end (lambda (sequence end)
+                           (position delimiter sequence :end end :from-end t :key key :test-not test-not))
+                         sequence start end count remove-empty-subseqs))))
+
+    (defun split-sequence-if (predicate sequence &key (start 0) (end nil) (from-end nil)
+                                                      (count nil) (remove-empty-subseqs nil) (key #'identity))
+      "Return a list of subsequences in seq delimited by items satisfying
+predicate.
+
+If :remove-empty-subseqs is NIL, empty subsequences will be included
+in the result; otherwise they will be discarded.  All other keywords
+work analogously to those for CL:SUBSTITUTE-IF.  In particular, the
+behaviour of :from-end is possibly different from other versions of
+this function; :from-end values of NIL and T are equivalent unless
+:count is supplied. The second return value is an index suitable as an
+argument to CL:SUBSEQ into the sequence indicating where processing
+stopped."
+      (check-bounds sequence start end)
+      (if from-end
+          (split-from-end (lambda (sequence end)
+                            (position-if predicate sequence :end end :from-end t :key key))
+                          sequence start end count remove-empty-subseqs)
+          (split-from-start (lambda (sequence start)
+                              (position-if predicate sequence :start start :key key))
+                            sequence start end count remove-empty-subseqs)))
+
+    (defun split-sequence-if-not (predicate sequence &key (count nil) (remove-empty-subseqs nil)
+                                                          (from-end nil) (start 0) (end nil) (key #'identity))
+      "Return a list of subsequences in seq delimited by items satisfying
+\(CL:COMPLEMENT predicate).
+
+If :remove-empty-subseqs is NIL, empty subsequences will be included
+in the result; otherwise they will be discarded.  All other keywords
+work analogously to those for CL:SUBSTITUTE-IF-NOT.  In particular,
+the behaviour of :from-end is possibly different from other versions
+of this function; :from-end values of NIL and T are equivalent unless
+:count is supplied. The second return value is an index suitable as an
+argument to CL:SUBSEQ into the sequence indicating where processing
+stopped."
+      (check-bounds sequence start end)
+      (if from-end
+          (split-from-end (lambda (sequence end)
+                            (position-if-not predicate sequence :end end :from-end t :key key))
+                          sequence start end count remove-empty-subseqs)
+          (split-from-start (lambda (sequence start)
+                              (position-if-not predicate sequence :start start :key key))
+                            sequence start end count remove-empty-subseqs))))
+  
+
   (defun symb (&rest args)
     "Receives any number of objects, concatenates all into one string with `#'mkstr` and converts them to symbol.
 
@@ -193,7 +328,8 @@ unique symbol the named variable will be bound to."
     `(with-gensyms ,names ,@forms))
   
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (export '(curry ensure-boolean ensure-gethash ensure-list mkstr once-only
-            rcurry symb with-gensyms with-unique-names)))
+  (export '(curry ensure-boolean ensure-gethash ensure-list flip mkstr
+            once-only rcurry riffle split-sequence split-sequence-if
+            split-sequence-if-not symb with-gensyms with-unique-names)))
 
 ;;;; END OF quickutils.lisp ;;;;

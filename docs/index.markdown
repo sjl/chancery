@@ -1,5 +1,5 @@
-Chancery is a library for procedurally generating data in Common Lisp.  It has
-some extra support for strings, and is heavily inspired by [Tracery][].
+Chancery is a library for procedurally generating text and stories in Common
+Lisp.  It's heavily inspired by [Tracery][].
 
 [Tracery]: http://tracery.io/
 
