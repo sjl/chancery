@@ -47,13 +47,22 @@
     (apply #'append <>)))
 
 
+(deftype non-keyword-symbol ()
+  '(and symbol (not keyword)))
+
+
 ;;;; Guts ---------------------------------------------------------------------
 (defparameter *bindings* nil)
 
 
 (defun create-binding (binding)
-  (destructuring-bind (symbol expr) binding
-    (list symbol (evaluate-expression expr))))
+  (destructuring-bind (target expr) binding
+    (let ((value (evaluate-expression expr)))
+      (etypecase target
+        (non-keyword-symbol (list target value))
+        (cons (loop :for symbol :in target
+                    :for val :in value
+                    :append (list symbol val)))))))
 
 (defun evaluate-bind (bindings expr)
   (let* ((new-bindings (mapcan (rcurry #'create-binding) bindings))
@@ -98,6 +107,10 @@
 (defun evaluate-lisp (expr)
   (eval expr))
 
+
+(defun evaluate-list (list)
+  (mapcar #'evaluate-expression list))
+
 (defun evaluate-expression (expr)
   (typecase expr
     ((or string keyword null) expr)
@@ -108,6 +121,7 @@
             (bind (evaluate-bind (second expr) (cddr expr)))
             (bind* (evaluate-bind* (second expr) (cddr expr)))
             (eval (evaluate-lisp (second expr)))
+            (list (evaluate-list (rest expr)))
             (t (evaluate-combination expr))))
     (t expr)))
 
@@ -176,3 +190,5 @@
          "'"
          "'s")))
 
+
+;;;; Scratch ------------------------------------------------------------------
