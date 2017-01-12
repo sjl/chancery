@@ -182,6 +182,13 @@
     ((#\z #\h) (cat (chop string 1) "es"))
     (t (cat string "s"))))
 
+(defun ing (string)
+  "Add ing to `string`."
+  (assert-nonempty string "Cannot add ing to an empty string.")
+  (if (eql #\e (ch string -1))
+    (cat (chop string 1) "ing")
+    (cat string "ing")))
+
 (defun pos (string)
   "Make `string` posessive by adding an apostrophe (and possibly an s)."
   (assert-nonempty string "Cannot make an empty string posessive.")
