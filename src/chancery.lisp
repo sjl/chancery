@@ -47,10 +47,6 @@
     (apply #'append <>)))
 
 
-(deftype non-keyword-symbol ()
-  '(and symbol (not keyword)))
-
-
 ;;;; Guts ---------------------------------------------------------------------
 (defun evaluate-combination (list)
   (-<> list
@@ -110,6 +106,7 @@
        (random-elt ,(coerce expressions 'vector)))))
 
 (defmacro generate (expression)
+  "Generate a single Chancery expression."
   `(evaluate-expression ',expression))
 
 
@@ -123,10 +120,6 @@
   "Capitalize each word of `string`."
   (assert-nonempty string "Cannot capitalize-all an empty string.")
   (string-capitalize string))
-
-(defun q (string)
-  "Wrap `string` in quotation marks."
-  (cat "\"" string "\""))
 
 (defun a (string)
   "Add an indefinite article (a or an) to the front of `string`."

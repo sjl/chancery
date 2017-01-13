@@ -2,7 +2,7 @@
 ;;;; See http://quickutil.org for details.
 
 ;;;; To regenerate:
-;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:COMPOSE :CURRY :ENSURE-BOOLEAN :ENSURE-GETHASH :ENSURE-LIST :FLIP :MKSTR :ONCE-ONLY :RCURRY :RIFFLE :SPLIT-SEQUENCE :SYMB :WITH-GENSYMS) :ensure-package T :package "CHANCERY.QUICKUTILS")
+;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:CURRY :ENSURE-BOOLEAN :FLIP :RCURRY :RIFFLE :SPLIT-SEQUENCE) :ensure-package T :package "CHANCERY.QUICKUTILS")
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (unless (find-package "CHANCERY.QUICKUTILS")
@@ -14,11 +14,8 @@
 
 (when (boundp '*utilities*)
   (setf *utilities* (union *utilities* '(:MAKE-GENSYM-LIST :ENSURE-FUNCTION
-                                         :COMPOSE :CURRY :ENSURE-BOOLEAN
-                                         :ENSURE-GETHASH :ENSURE-LIST :FLIP
-                                         :MKSTR :ONCE-ONLY :RCURRY :RIFFLE
-                                         :SPLIT-SEQUENCE :SYMB
-                                         :STRING-DESIGNATOR :WITH-GENSYMS))))
+                                         :CURRY :ENSURE-BOOLEAN :FLIP :RCURRY
+                                         :RIFFLE :SPLIT-SEQUENCE))))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun make-gensym-list (length &optional (x "G"))
     "Returns a list of `length` gensyms, each generated as if with a call to `make-gensym`,
@@ -42,35 +39,6 @@ it must be a function name and its `fdefinition` is returned."
         function-designator
         (fdefinition function-designator)))
   )                                        ; eval-when
-
-  (defun compose (function &rest more-functions)
-    "Returns a function composed of `function` and `more-functions` that applies its ;
-arguments to to each in turn, starting from the rightmost of `more-functions`,
-and then calling the next one with the primary value of the last."
-    (declare (optimize (speed 3) (safety 1) (debug 1)))
-    (reduce (lambda (f g)
-              (let ((f (ensure-function f))
-                    (g (ensure-function g)))
-                (lambda (&rest arguments)
-                  (declare (dynamic-extent arguments))
-                  (funcall f (apply g arguments)))))
-            more-functions
-            :initial-value function))
-
-  (define-compiler-macro compose (function &rest more-functions)
-    (labels ((compose-1 (funs)
-               (if (cdr funs)
-                   `(funcall ,(car funs) ,(compose-1 (cdr funs)))
-                   `(apply ,(car funs) arguments))))
-      (let* ((args (cons function more-functions))
-             (funs (make-gensym-list (length args) "COMPOSE")))
-        `(let ,(loop for f in funs for arg in args
-                     collect `(,f (ensure-function ,arg)))
-           (declare (optimize (speed 3) (safety 1) (debug 1)))
-           (lambda (&rest arguments)
-             (declare (dynamic-extent arguments))
-             ,(compose-1 funs))))))
-  
 
   (defun curry (function &rest arguments)
     "Returns a function that applies `arguments` and the arguments
@@ -97,74 +65,10 @@ it is called with to `function`."
     (and x t))
   
 
-  (defmacro ensure-gethash (key hash-table &optional default)
-    "Like `gethash`, but if `key` is not found in the `hash-table` saves the `default`
-under key before returning it. Secondary return value is true if key was
-already in the table."
-    `(multiple-value-bind (value ok) (gethash ,key ,hash-table)
-       (if ok
-           (values value ok)
-           (values (setf (gethash ,key ,hash-table) ,default) nil))))
-  
-
-  (defun ensure-list (list)
-    "If `list` is a list, it is returned. Otherwise returns the list designated by `list`."
-    (if (listp list)
-        list
-        (list list)))
-  
-
   (defun flip (f)
     "Return a function whose argument order of a binary function `f` is reversed."
     #'(lambda (y x)
         (funcall f x y)))
-  
-
-  (defun mkstr (&rest args)
-    "Receives any number of objects (string, symbol, keyword, char, number), extracts all printed representations, and concatenates them all into one string.
-
-Extracted from _On Lisp_, chapter 4."
-    (with-output-to-string (s)
-      (dolist (a args) (princ a s))))
-  
-
-  (defmacro once-only (specs &body forms)
-    "Evaluates `forms` with symbols specified in `specs` rebound to temporary
-variables, ensuring that each initform is evaluated only once.
-
-Each of `specs` must either be a symbol naming the variable to be rebound, or of
-the form:
-
-    (symbol initform)
-
-Bare symbols in `specs` are equivalent to
-
-    (symbol symbol)
-
-Example:
-
-    (defmacro cons1 (x) (once-only (x) `(cons ,x ,x)))
-      (let ((y 0)) (cons1 (incf y))) => (1 . 1)"
-    (let ((gensyms (make-gensym-list (length specs) "ONCE-ONLY"))
-          (names-and-forms (mapcar (lambda (spec)
-                                     (etypecase spec
-                                       (list
-                                        (destructuring-bind (name form) spec
-                                          (cons name form)))
-                                       (symbol
-                                        (cons spec spec))))
-                                   specs)))
-      ;; bind in user-macro
-      `(let ,(mapcar (lambda (g n) (list g `(gensym ,(string (car n)))))
-              gensyms names-and-forms)
-         ;; bind in final expansion
-         `(let (,,@(mapcar (lambda (g n)
-                             ``(,,g ,,(cdr n)))
-                           gensyms names-and-forms))
-            ;; bind in user-macro
-            ,(let ,(mapcar (lambda (n g) (list (car n) g))
-                    names-and-forms gensyms)
-               ,@forms)))))
   
 
   (defun rcurry (function &rest arguments)
@@ -304,62 +208,8 @@ stopped."
                               (position-if-not predicate sequence :start start :key key))
                             sequence start end count remove-empty-subseqs))))
   
-
-  (defun symb (&rest args)
-    "Receives any number of objects, concatenates all into one string with `#'mkstr` and converts them to symbol.
-
-Extracted from _On Lisp_, chapter 4.
-
-See also: `symbolicate`"
-    (values (intern (apply #'mkstr args))))
-  
-
-  (deftype string-designator ()
-    "A string designator type. A string designator is either a string, a symbol,
-or a character."
-    `(or symbol string character))
-  
-
-  (defmacro with-gensyms (names &body forms)
-    "Binds each variable named by a symbol in `names` to a unique symbol around
-`forms`. Each of `names` must either be either a symbol, or of the form:
-
-    (symbol string-designator)
-
-Bare symbols appearing in `names` are equivalent to:
-
-    (symbol symbol)
-
-The string-designator is used as the argument to `gensym` when constructing the
-unique symbol the named variable will be bound to."
-    `(let ,(mapcar (lambda (name)
-                     (multiple-value-bind (symbol string)
-                         (etypecase name
-                           (symbol
-                            (values name (symbol-name name)))
-                           ((cons symbol (cons string-designator null))
-                            (values (first name) (string (second name)))))
-                       `(,symbol (gensym ,string))))
-            names)
-       ,@forms))
-
-  (defmacro with-unique-names (names &body forms)
-    "Binds each variable named by a symbol in `names` to a unique symbol around
-`forms`. Each of `names` must either be either a symbol, or of the form:
-
-    (symbol string-designator)
-
-Bare symbols appearing in `names` are equivalent to:
-
-    (symbol symbol)
-
-The string-designator is used as the argument to `gensym` when constructing the
-unique symbol the named variable will be bound to."
-    `(with-gensyms ,names ,@forms))
-  
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (export '(compose curry ensure-boolean ensure-gethash ensure-list flip mkstr
-            once-only rcurry riffle split-sequence split-sequence-if
-            split-sequence-if-not symb with-gensyms with-unique-names)))
+  (export '(curry ensure-boolean flip rcurry riffle split-sequence
+            split-sequence-if split-sequence-if-not)))
 
 ;;;; END OF quickutils.lisp ;;;;
