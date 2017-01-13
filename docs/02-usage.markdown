@@ -19,5 +19,3 @@ Modifiers
 Evaluation
 ----------
 
-Binding
--------

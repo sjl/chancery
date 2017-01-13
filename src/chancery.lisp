@@ -52,39 +52,6 @@
 
 
 ;;;; Guts ---------------------------------------------------------------------
-(defparameter *bindings* nil)
-
-
-(defun create-binding (binding)
-  (destructuring-bind (target expr) binding
-    (let ((value (evaluate-expression expr)))
-      (etypecase target
-        (non-keyword-symbol (list target value))
-        (cons (loop :for symbol :in target
-                    :for val :in value
-                    :append (list symbol val)))))))
-
-(defun evaluate-bind (bindings expr)
-  (let* ((new-bindings (mapcan (rcurry #'create-binding) bindings))
-         (*bindings* (cons new-bindings *bindings*)))
-    (evaluate-expression expr)))
-
-(defun evaluate-bind* (bindings expr)
-  (destructuring-bind (binding . remaining-bindings) bindings
-    (let ((*bindings* (cons (create-binding binding)
-                            *bindings*)))
-      (if remaining-bindings
-        (evaluate-bind* remaining-bindings expr)
-        (evaluate-expression expr)))))
-
-(defun lookup-binding (symbol)
-  (loop :for frame :in *bindings*
-        :for value = (getf frame symbol 'not-found)
-        :do (unless (eq value 'not-found)
-              (return-from lookup-binding (values value t))))
-  (values nil nil))
-
-
 (defun evaluate-combination (list)
   (-<> list
     (separate-with-spaces <>)
@@ -97,12 +64,9 @@
           :initial-value (evaluate-expression (aref vector 0))))
 
 (defun evaluate-symbol (symbol)
-  (multiple-value-bind (value found) (lookup-binding symbol)
-    (if found
-      value
-      (if (fboundp symbol)
-        (funcall symbol)
-        (symbol-value symbol)))))
+  (if (fboundp symbol)
+    (funcall symbol)
+    (symbol-value symbol)))
 
 (defun evaluate-lisp (expr)
   (eval expr))
@@ -118,8 +82,6 @@
     (vector (evaluate-modifiers expr))
     (cons (case (first expr)
             (quote (second expr))
-            (bind (evaluate-bind (second expr) (cddr expr)))
-            (bind* (evaluate-bind* (second expr) (cddr expr)))
             (eval (evaluate-lisp (second expr)))
             (list (evaluate-list (rest expr)))
             (t (evaluate-combination expr))))
@@ -146,6 +108,9 @@
   `(defun ,name ()
      (evaluate-expression
        (random-elt ,(coerce expressions 'vector)))))
+
+(defmacro generate (expression)
+  `(evaluate-expression ',expression))
 
 
 ;;;; Modifiers ----------------------------------------------------------------

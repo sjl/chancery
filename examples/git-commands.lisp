@@ -169,9 +169,11 @@
   ("-" :. letter)
   ("-" :. letter [noun shellify string-upcase]))
 
+(defparameter *noun* nil)
+
 (define-rule long-option%
-  (bind ((noun [noun shellify]))
-    ("--" :. noun :. "=<" :. noun :. ">"))
+  (eval (let ((*noun* (generate [noun shellify])))
+          (generate ("--" :. *noun* :. "=<" :. *noun* :. ">"))))
   ("--" :. action-verb)
   ("--" :. extremum)
   ("--only-" :. adjective)
@@ -197,24 +199,28 @@
   (long-option short-options))
 
 
+(defparameter *command* nil)
+(defparameter *commanding* nil)
+
 (define-rule description
-  (look-for location "for the" age noun "and" command "it")
-  ("read" (eval (+ 2 (random 2000))) "bytes from" location "and" command "them")
-  (command "the" extremum noun "in" git-location)
-  (command [noun a] temporal-adverb refreshing git-location)
-  (command "and push all" adjective [noun s] "to" location)
-  (command "all" adjective [noun s] "in" git-location)
-  (command "the" extremum "and merge it into" git-location)
-  (command "some" [noun s] "from a remote")
-  (command "two or more" [noun s] "and save them to" location)
-  ("move or" command [noun a] "in" git-location)
-  ("rebase" [noun a] "onto" location "after" commanding "it")
-  (command "and" refresh git-location)
-  ("list," command :. ", or delete" [noun s]))
+  (look-for location "for the" age noun "and" *command* "it")
+  ("read" (eval (+ 2 (random 2000))) "bytes from" location "and" *command* "them")
+  (*command* "the" extremum noun "in" git-location)
+  (*command* [noun a] temporal-adverb refreshing git-location)
+  (*command* "and push all" adjective [noun s] "to" location)
+  (*command* "all" adjective [noun s] "in" git-location)
+  (*command* "the" extremum "and merge it into" git-location)
+  (*command* "some" [noun s] "from a remote")
+  (*command* "two or more" [noun s] "and save them to" location)
+  ("move or" *command* [noun a] "in" git-location)
+  ("rebase" [noun a] "onto" location "after" *commanding* "it")
+  (*command* "and" refresh git-location)
+  ("list," *command* :. ", or delete" [noun s]))
+
+(defun entry ()
+  (destructuring-bind (*command* *commanding*) (action)
+    (generate
+      ("git" *command* options #\newline :. [description cap]))))
 
 
-(define-rule entry
-  (bind (((command commanding) action))
-    ("git" command options #\newline :. [description cap])))
-
-
+(dotimes (_ 20) (princ (entry)) (terpri) (terpri))

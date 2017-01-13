@@ -2,7 +2,7 @@
 ;;;; See http://quickutil.org for details.
 
 ;;;; To regenerate:
-;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:CURRY :ENSURE-BOOLEAN :ENSURE-GETHASH :ENSURE-LIST :FLIP :MKSTR :ONCE-ONLY :RCURRY :RIFFLE :SPLIT-SEQUENCE :SYMB :WITH-GENSYMS) :ensure-package T :package "CHANCERY.QUICKUTILS")
+;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:COMPOSE :CURRY :ENSURE-BOOLEAN :ENSURE-GETHASH :ENSURE-LIST :FLIP :MKSTR :ONCE-ONLY :RCURRY :RIFFLE :SPLIT-SEQUENCE :SYMB :WITH-GENSYMS) :ensure-package T :package "CHANCERY.QUICKUTILS")
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (unless (find-package "CHANCERY.QUICKUTILS")
@@ -14,9 +14,10 @@
 
 (when (boundp '*utilities*)
   (setf *utilities* (union *utilities* '(:MAKE-GENSYM-LIST :ENSURE-FUNCTION
-                                         :CURRY :ENSURE-BOOLEAN :ENSURE-GETHASH
-                                         :ENSURE-LIST :FLIP :MKSTR :ONCE-ONLY
-                                         :RCURRY :RIFFLE :SPLIT-SEQUENCE :SYMB
+                                         :COMPOSE :CURRY :ENSURE-BOOLEAN
+                                         :ENSURE-GETHASH :ENSURE-LIST :FLIP
+                                         :MKSTR :ONCE-ONLY :RCURRY :RIFFLE
+                                         :SPLIT-SEQUENCE :SYMB
                                          :STRING-DESIGNATOR :WITH-GENSYMS))))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun make-gensym-list (length &optional (x "G"))
@@ -41,6 +42,35 @@ it must be a function name and its `fdefinition` is returned."
         function-designator
         (fdefinition function-designator)))
   )                                        ; eval-when
+
+  (defun compose (function &rest more-functions)
+    "Returns a function composed of `function` and `more-functions` that applies its ;
+arguments to to each in turn, starting from the rightmost of `more-functions`,
+and then calling the next one with the primary value of the last."
+    (declare (optimize (speed 3) (safety 1) (debug 1)))
+    (reduce (lambda (f g)
+              (let ((f (ensure-function f))
+                    (g (ensure-function g)))
+                (lambda (&rest arguments)
+                  (declare (dynamic-extent arguments))
+                  (funcall f (apply g arguments)))))
+            more-functions
+            :initial-value function))
+
+  (define-compiler-macro compose (function &rest more-functions)
+    (labels ((compose-1 (funs)
+               (if (cdr funs)
+                   `(funcall ,(car funs) ,(compose-1 (cdr funs)))
+                   `(apply ,(car funs) arguments))))
+      (let* ((args (cons function more-functions))
+             (funs (make-gensym-list (length args) "COMPOSE")))
+        `(let ,(loop for f in funs for arg in args
+                     collect `(,f (ensure-function ,arg)))
+           (declare (optimize (speed 3) (safety 1) (debug 1)))
+           (lambda (&rest arguments)
+             (declare (dynamic-extent arguments))
+             ,(compose-1 funs))))))
+  
 
   (defun curry (function &rest arguments)
     "Returns a function that applies `arguments` and the arguments
@@ -328,7 +358,7 @@ unique symbol the named variable will be bound to."
     `(with-gensyms ,names ,@forms))
   
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (export '(curry ensure-boolean ensure-gethash ensure-list flip mkstr
+  (export '(compose curry ensure-boolean ensure-gethash ensure-list flip mkstr
             once-only rcurry riffle split-sequence split-sequence-if
             split-sequence-if-not symb with-gensyms with-unique-names)))
 

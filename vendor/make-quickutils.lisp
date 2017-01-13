@@ -4,6 +4,7 @@
   "quickutils.lisp"
   :utilities '(
 
+               :compose
                :curry
                :ensure-boolean
                :ensure-gethash
