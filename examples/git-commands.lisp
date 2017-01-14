@@ -1,7 +1,7 @@
 (in-package :chancery)
 (named-readtables:in-readtable :chancery)
 
-(define-rule noun
+(define-string noun
   "binary blob"
   "packfile"
   "refspec"
@@ -21,11 +21,10 @@
   "repository"
   "symlink"
   "tag"
-  "tip"
-  )
+  "tip")
 
 
-(define-rule git-location%
+(define-string git-location%
   "repository"
   "index"
   "working tree"
@@ -39,7 +38,7 @@
   "upstream repository"
   "DAG")
 
-(define-rule git-folder%
+(define-string git-folder%
   ""
   "refs"
   "logs"
@@ -48,14 +47,14 @@
   "HEAD"
   "COMMIT_EDITMSG")
 
-(define-rule git-folder
+(define-string git-folder
   (".git/" :. git-folder%))
 
-(define-rule git-location
+(define-string git-location
   ("the" git-location%)
   git-folder)
 
-(define-rule external-location
+(define-string external-location
   "Hacker News"
   "Stack Overflow"
   "Twitter"
@@ -70,12 +69,12 @@
   "the git source code"
   "your home directory")
 
-(define-rule location
+(define-string location
   git-location
   external-location)
 
 
-(define-rule action
+(define-string action
   (list "bisect" "bisecting")
   (list "clone" "cloning")
   (list "commit" "committing")
@@ -99,23 +98,22 @@
   (list "sign" "signing")
   (list "simplify" "simplifying")
   (list "update" "updating")
-  (list "verify" "verifying")
-  )
+  (list "verify" "verifying"))
 
 (defun action-verb ()
   (first (action)))
 
 
-(define-rule refresh
+(define-string refresh
   "update"
   "reset")
 
-(define-rule refreshing
+(define-string refreshing
   "updating"
   "resetting")
 
 
-(define-rule extremum
+(define-string extremum
   "newest"
   "oldest"
   "largest"
@@ -127,7 +125,7 @@
   "simplest"
   "best")
 
-(define-rule adjective
+(define-string adjective
   "merged"
   "unmerged"
   "symbolic"
@@ -137,62 +135,61 @@
   "big-endian"
   "little-endian"
   "childless"
-  "binary"
-  )
+  "binary")
 
 
-(define-rule age
+(define-string age
   "newest"
   "oldest"
   "first"
   "last")
 
-(define-rule look-for
+(define-string look-for
   "search"
   "grep"
   "bisect"
   "filter")
 
-(define-rule temporal-adverb
+(define-string temporal-adverb
   "before"
   "after"
   "without")
 
 
 (defun letter ()
-  (random-elt "abcdefghijklmnopqrstuvwxyz"))
+  (random-elt "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"))
 
 (defun shellify (str)
   (string-downcase (substitute #\- #\space str)))
 
-(define-rule short-option%
+(define-string short-option%
   ("-" :. letter)
   ("-" :. letter [noun shellify string-upcase]))
 
 (defparameter *noun* nil)
 
-(define-rule long-option%
-  (eval (let ((*noun* (generate [noun shellify])))
-          (generate ("--" :. *noun* :. "=<" :. *noun* :. ">"))))
+(define-string long-option%
+  (eval (let ((*noun* (generate-string [noun shellify])))
+          (generate-string ("--" :. *noun* :. "=<" :. *noun* :. ">"))))
   ("--" :. action-verb)
   ("--" :. extremum)
   ("--only-" :. adjective)
   ("--only-" :. [noun shellify s])
   ("--" :. action-verb :. "=<" :. [noun shellify] :. ">"))
 
-(define-rule short-option
+(define-string short-option
   short-option%
   ("[" :. short-option% :. "]"))
 
-(define-rule long-option
+(define-string long-option
   long-option%
   ("[" :. long-option% :. "]"))
 
-(define-rule short-options
+(define-string short-options
   short-option
   (short-option short-option))
 
-(define-rule options
+(define-string options
   long-option
   short-options
   (short-options long-option)
@@ -202,7 +199,7 @@
 (defparameter *command* nil)
 (defparameter *commanding* nil)
 
-(define-rule description
+(define-string description
   (look-for location "for the" age noun "and" *command* "it")
   ("read" (eval (+ 2 (random 2000))) "bytes from" location "and" *command* "them")
   (*command* "the" extremum noun "in" git-location)
@@ -219,8 +216,8 @@
 
 (defun entry ()
   (destructuring-bind (*command* *commanding*) (action)
-    (generate
+    (generate-string
       ("git" *command* options #\newline :. [description cap]))))
 
 
-(dotimes (_ 20) (princ (entry)) (terpri) (terpri))
+; (dotimes (_ 20) (princ (entry)) (terpri) (terpri))

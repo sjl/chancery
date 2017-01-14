@@ -47,17 +47,21 @@
     (apply #'append <>)))
 
 
-;;;; Guts ---------------------------------------------------------------------
-(defun evaluate-combination (list)
-  (-<> list
-    (separate-with-spaces <>)
-    (mapcar #'evaluate-expression <>)
-    (apply #'cat (mapcar #'princ-to-string <>))))
+(deftype non-keyword-symbol ()
+  '(and symbol (not keyword)))
 
-(defun evaluate-modifiers (vector)
-  (reduce (flip #'funcall) vector
-          :start 1
-          :initial-value (evaluate-expression (aref vector 0))))
+
+;;;; Data ---------------------------------------------------------------------
+(defun data-special-form-p (form)
+  (ensure-boolean (and (consp form)
+                       (member (first form) '(quote eval)))))
+
+(deftype data-special-form ()
+  '(satisfies data-special-form-p))
+
+
+(defun evaluate-sequence (seq)
+  (map (type-of seq) #'evaluate-expression seq))
 
 (defun evaluate-symbol (symbol)
   (if (fboundp symbol)
@@ -67,25 +71,78 @@
 (defun evaluate-lisp (expr)
   (eval expr))
 
+(defun evaluate-data-special-form (expr)
+  (destructuring-bind (symbol argument) expr
+    (ecase symbol
+      (quote argument)
+      (eval (evaluate-lisp argument)))))
 
-(defun evaluate-list (list)
-  (mapcar #'evaluate-expression list))
 
 (defun evaluate-expression (expr)
   (typecase expr
-    ((or string keyword null) expr)
-    (symbol (evaluate-symbol expr))
-    (vector (evaluate-modifiers expr))
-    (cons (case (first expr)
-            (quote (second expr))
-            (eval (evaluate-lisp (second expr)))
-            (list (evaluate-list (rest expr)))
-            (t (evaluate-combination expr))))
+    (non-keyword-symbol (evaluate-symbol expr))
+    (data-special-form (evaluate-data-special-form expr))
+    (string expr)
+    (sequence (evaluate-sequence expr))
     (t expr)))
 
 
 (defmacro define-rule (name &rest expressions)
-  "Define a Chancery rule for the symbol `name`.
+  `(defun ,name ()
+     (evaluate-expression
+       (random-elt ,(coerce expressions 'vector)))))
+
+(defmacro generate (expression)
+  "Generate a single Chancery expression."
+  `(evaluate-expression ',expression))
+
+
+;;;; Strings ------------------------------------------------------------------
+(defun string-special-form-p (form)
+  (ensure-boolean (and (consp form)
+                       (member (first form) '(quote eval list vector)))))
+
+(deftype string-special-form ()
+  '(satisfies string-special-form-p))
+
+
+(defun evaluate-string-combination (list)
+  (-<> list
+    (separate-with-spaces <>)
+    (mapcar #'evaluate-string-expression <>)
+    (apply #'cat (mapcar #'princ-to-string <>))))
+
+(defun evaluate-string-modifiers (vector)
+  (reduce (flip #'funcall) vector
+          :start 1
+          :initial-value
+          (princ-to-string (evaluate-string-expression (aref vector 0)))))
+
+(defun evaluate-string-sequence (sequence-type seq)
+  (map sequence-type #'evaluate-string-expression seq))
+
+(defun evaluate-string-special-form (expr)
+  (destructuring-bind (symbol . body) expr
+    (ecase symbol
+      (quote (first body))
+      (list (evaluate-string-sequence 'list body))
+      (vector (evaluate-string-sequence 'vector body))
+      (eval (evaluate-lisp (first body))))))
+
+
+(defun evaluate-string-expression (expr)
+  (typecase expr
+    (string expr)
+    (null "")
+    (non-keyword-symbol (evaluate-symbol expr))
+    (string-special-form (evaluate-string-special-form expr))
+    (vector (evaluate-string-modifiers expr))
+    (cons (evaluate-string-combination expr))
+    (t expr)))
+
+
+(defmacro define-string (name &rest expressions)
+  "Define a Chancery string rule for the symbol `name`.
 
   Each expression in `expressions` can be any valid Chancery expression.  When
   the rule is invoked one will be chosen at random and evaluated.
@@ -102,12 +159,12 @@
 
   "
   `(defun ,name ()
-     (evaluate-expression
+     (evaluate-string-expression
        (random-elt ,(coerce expressions 'vector)))))
 
-(defmacro generate (expression)
-  "Generate a single Chancery expression."
-  `(evaluate-expression ',expression))
+(defmacro generate-string (expression)
+  "Generate a single Chancery string expression."
+  `(evaluate-string-expression ',expression))
 
 
 ;;;; Modifiers ----------------------------------------------------------------
