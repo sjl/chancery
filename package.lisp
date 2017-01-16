@@ -2,11 +2,14 @@
   (:use :cl :chancery.quickutils)
   (:export
     :define-rule
+    :define-string
+    :gen
+    :gen-string
 
     :quote
-    :bind
-    :bind*
     :eval
+    :list
+    :vector
 
     :cap
     :cap-all

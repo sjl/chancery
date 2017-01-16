@@ -71,12 +71,6 @@
     :sums (prefix-sums weights)
     :total (apply #'+ 0.0 weights)))
 
-(defun weightlist-random (weightlist)
-  "Return a random item from the weightlist, taking the weights into account."
-  (loop :with n = (random (weightlist-total weightlist))
-        :for item :in (weightlist-items weightlist)
-        :for weight :in (weightlist-sums weightlist)
-        :when (< n weight) :do (return item)))
 
 (defmethod print-object ((wl weightlist) s)
   (print-unreadable-object (wl s :type t)
@@ -84,6 +78,19 @@
                    (weightlist-weights wl)
                    (weightlist-items wl))
            s)))
+
+(defmethod make-load-form ((wl weightlist) &optional environment)
+  (make-load-form-saving-slots wl
+                               :slot-names '(weights sums items total)
+                               :environment environment))
+
+
+(defun weightlist-random (weightlist)
+  "Return a random item from the weightlist, taking the weights into account."
+  (loop :with n = (random (weightlist-total weightlist))
+        :for item :in (weightlist-items weightlist)
+        :for weight :in (weightlist-sums weightlist)
+        :when (< n weight) :do (return item)))
 
 
 (defun build-weightlist-uniform (values)
@@ -162,7 +169,7 @@
 (defmacro define-rule (name-and-options &rest expressions)
   (build-define-rule 'evaluate-expression name-and-options expressions))
 
-(defmacro generate (expression)
+(defmacro gen (expression)
   "Generate a single Chancery expression."
   `(evaluate-expression ',expression))
 
@@ -230,7 +237,7 @@
   "
   (build-define-rule 'evaluate-string-expression name-and-options expressions))
 
-(defmacro generate-string (expression)
+(defmacro gen-string (expression)
   "Generate a single Chancery string expression."
   `(evaluate-string-expression ',expression))
 
