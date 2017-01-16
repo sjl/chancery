@@ -67,6 +67,7 @@
   "your .gitconfig"
   "the git man pages"
   "the git source code"
+  "the blockchain"
   "your home directory")
 
 (define-string location
@@ -220,4 +221,7 @@
       ("git" *command* options #\newline :. [description cap]))))
 
 
-; (dotimes (_ 20) (princ (entry)) (terpri) (terpri))
+(defun p (s)
+  (format t "~A~2%" s))
+
+; (map nil #'p (gimme 40 (entry)))

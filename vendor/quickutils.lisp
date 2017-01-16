@@ -2,7 +2,7 @@
 ;;;; See http://quickutil.org for details.
 
 ;;;; To regenerate:
-;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:CURRY :ENSURE-BOOLEAN :FLIP :RCURRY :RIFFLE :SPLIT-SEQUENCE) :ensure-package T :package "CHANCERY.QUICKUTILS")
+;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:CURRY :ENSURE-BOOLEAN :ENSURE-LIST :FLIP :RCURRY :RIFFLE :SPLIT-SEQUENCE) :ensure-package T :package "CHANCERY.QUICKUTILS")
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (unless (find-package "CHANCERY.QUICKUTILS")
@@ -14,8 +14,8 @@
 
 (when (boundp '*utilities*)
   (setf *utilities* (union *utilities* '(:MAKE-GENSYM-LIST :ENSURE-FUNCTION
-                                         :CURRY :ENSURE-BOOLEAN :FLIP :RCURRY
-                                         :RIFFLE :SPLIT-SEQUENCE))))
+                                         :CURRY :ENSURE-BOOLEAN :ENSURE-LIST
+                                         :FLIP :RCURRY :RIFFLE :SPLIT-SEQUENCE))))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun make-gensym-list (length &optional (x "G"))
     "Returns a list of `length` gensyms, each generated as if with a call to `make-gensym`,
@@ -63,6 +63,13 @@ it is called with to `function`."
   (defun ensure-boolean (x)
     "Convert `x` into a Boolean value."
     (and x t))
+  
+
+  (defun ensure-list (list)
+    "If `list` is a list, it is returned. Otherwise returns the list designated by `list`."
+    (if (listp list)
+        list
+        (list list)))
   
 
   (defun flip (f)
@@ -209,7 +216,7 @@ stopped."
                             sequence start end count remove-empty-subseqs))))
   
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (export '(curry ensure-boolean flip rcurry riffle split-sequence
+  (export '(curry ensure-boolean ensure-list flip rcurry riffle split-sequence
             split-sequence-if split-sequence-if-not)))
 
 ;;;; END OF quickutils.lisp ;;;;

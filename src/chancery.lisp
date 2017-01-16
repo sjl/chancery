@@ -1,6 +1,30 @@
 (in-package :chancery)
 
 ;;;; Utils ---------------------------------------------------------------------
+(deftype non-keyword-symbol ()
+  '(and symbol (not keyword)))
+
+
+(defmacro -<> (&rest forms)
+  ;; I am going to lose my fucking mind if I have to program lisp without
+  ;; a threading macro, but I don't want to add another dep to this library, so
+  ;; here we are.
+  (if (null forms)
+    '<>
+    `(let ((<> ,(first forms)))
+       (-<> ,@(rest forms)))))
+
+(defmacro assert-nonempty (place message)
+  `(assert (not (emptyp ,place)) (,place) ,message))
+
+(defmacro gimme (n &body body)
+  `(loop :repeat ,n :collect (progn ,@body)))
+
+
+(defun prefix-sums (sequence &aux (sum 0))
+  (map 'list (lambda (n) (incf sum n)) sequence))
+
+
 (defun emptyp (string)
   (zerop (length string)))
 
@@ -23,23 +47,6 @@
 (defun vowelp (character)
   (ensure-boolean (member character '(#\a #\e #\i #\o #\u))))
 
-(defun random-elt (seq)
-  (elt seq (random (length seq))))
-
-
-(defmacro -<> (&rest forms)
-  ;; I am going to lose my fucking mind if I have to program lisp without
-  ;; a threading macro, but I don't want to add another dep to this library, so
-  ;; here we are.
-  (if (null forms)
-    '<>
-    `(let ((<> ,(first forms)))
-       (-<> ,@(rest forms)))))
-
-(defmacro assert-nonempty (place message)
-  `(assert (not (emptyp ,place)) (,place) ,message))
-
-
 (defun separate-with-spaces (list)
   (-<> list
     (split-sequence :. <>)
@@ -47,8 +54,65 @@
     (apply #'append <>)))
 
 
-(deftype non-keyword-symbol ()
-  '(and symbol (not keyword)))
+;;;; Weightlists --------------------------------------------------------------
+(defstruct (weightlist (:constructor %make-weightlist))
+  weights sums items total)
+
+(defun make-weightlist (items weights)
+  "Make a weightlist of the given items and weights.
+
+  Weights can be any `real` numbers.  Weights of zero are fine, as long as at
+  least one of the weights is nonzero (otherwise there's nothing to choose).
+
+  "
+  (%make-weightlist
+    :items items
+    :weights weights
+    :sums (prefix-sums weights)
+    :total (apply #'+ 0.0 weights)))
+
+(defun weightlist-random (weightlist)
+  "Return a random item from the weightlist, taking the weights into account."
+  (loop :with n = (random (weightlist-total weightlist))
+        :for item :in (weightlist-items weightlist)
+        :for weight :in (weightlist-sums weightlist)
+        :when (< n weight) :do (return item)))
+
+(defmethod print-object ((wl weightlist) s)
+  (print-unreadable-object (wl s :type t)
+    (prin1 (mapcar #'list
+                   (weightlist-weights wl)
+                   (weightlist-items wl))
+           s)))
+
+
+(defun build-weightlist-uniform (values)
+  (make-weightlist values (loop :for nil :in values :collect 1)))
+
+(defun build-weightlist-weighted (values)
+  (make-weightlist (mapcar #'second values)
+                   (mapcar #'first values)))
+
+(defun build-weightlist-zipf (values &key (exponent 1.0))
+  (loop
+    :with size = (length values)
+    :with denominator = (loop :for n :from 1.0 :to size
+                              :sum (/ (expt n exponent)))
+    :repeat size
+    :for rank :from 1
+    :for weight = (/ (/ (expt rank exponent))
+                     denominator)
+    :collect weight :into weights
+    :finally (return (make-weightlist values weights))))
+
+(defun build-weightlist (distribution-and-options values)
+  (destructuring-bind (distribution &rest options)
+      (ensure-list distribution-and-options)
+    (apply (ecase distribution
+             (:uniform #'build-weightlist-uniform)
+             (:weighted #'build-weightlist-weighted)
+             (:zipf #'build-weightlist-zipf))
+           values options)))
 
 
 ;;;; Data ---------------------------------------------------------------------
@@ -87,10 +151,16 @@
     (t expr)))
 
 
-(defmacro define-rule (name &rest expressions)
-  `(defun ,name ()
-     (evaluate-expression
-       (random-elt ,(coerce expressions 'vector)))))
+(defun build-define-rule (evaluator name-and-options expressions)
+  (destructuring-bind (name &key (distribution :uniform))
+      (ensure-list name-and-options)
+    `(defun ,name ()
+       (,evaluator
+         (weightlist-random ,(build-weightlist distribution expressions))))))
+
+
+(defmacro define-rule (name-and-options &rest expressions)
+  (build-define-rule 'evaluate-expression name-and-options expressions))
 
 (defmacro generate (expression)
   "Generate a single Chancery expression."
@@ -141,7 +211,7 @@
     (t expr)))
 
 
-(defmacro define-string (name &rest expressions)
+(defmacro define-string (name-and-options &rest expressions)
   "Define a Chancery string rule for the symbol `name`.
 
   Each expression in `expressions` can be any valid Chancery expression.  When
@@ -158,9 +228,7 @@
       (name \"went to the\" place :. \".\"))
 
   "
-  `(defun ,name ()
-     (evaluate-string-expression
-       (random-elt ,(coerce expressions 'vector)))))
+  (build-define-rule 'evaluate-string-expression name-and-options expressions))
 
 (defmacro generate-string (expression)
   "Generate a single Chancery string expression."

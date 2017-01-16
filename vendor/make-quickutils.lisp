@@ -6,6 +6,7 @@
 
                :curry
                :ensure-boolean
+               :ensure-list
                :flip
                :rcurry
                :riffle
