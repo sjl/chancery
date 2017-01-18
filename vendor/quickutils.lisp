@@ -2,7 +2,7 @@
 ;;;; See http://quickutil.org for details.
 
 ;;;; To regenerate:
-;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:CURRY :ENSURE-BOOLEAN :ENSURE-LIST :FLIP :RCURRY :RIFFLE :SPLIT-SEQUENCE) :ensure-package T :package "CHANCERY.QUICKUTILS")
+;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:CURRY :ENSURE-BOOLEAN :ENSURE-LIST :FLIP :RANGE :RCURRY :RIFFLE :SPLIT-SEQUENCE) :ensure-package T :package "CHANCERY.QUICKUTILS")
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (unless (find-package "CHANCERY.QUICKUTILS")
@@ -15,7 +15,8 @@
 (when (boundp '*utilities*)
   (setf *utilities* (union *utilities* '(:MAKE-GENSYM-LIST :ENSURE-FUNCTION
                                          :CURRY :ENSURE-BOOLEAN :ENSURE-LIST
-                                         :FLIP :RCURRY :RIFFLE :SPLIT-SEQUENCE))))
+                                         :FLIP :RANGE :RCURRY :RIFFLE
+                                         :SPLIT-SEQUENCE))))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun make-gensym-list (length &optional (x "G"))
     "Returns a list of `length` gensyms, each generated as if with a call to `make-gensym`,
@@ -76,6 +77,14 @@ it is called with to `function`."
     "Return a function whose argument order of a binary function `f` is reversed."
     #'(lambda (y x)
         (funcall f x y)))
+  
+
+  (defun range (start end &key (step 1) (key 'identity))
+    "Return the list of numbers `n` such that `start <= n < end` and
+`n = start + k*step` for suitable integers `k`. If a function `key` is
+provided, then apply it to each number."
+    (assert (<= start end))
+    (loop :for i :from start :below end :by step :collecting (funcall key i)))
   
 
   (defun rcurry (function &rest arguments)
@@ -216,7 +225,7 @@ stopped."
                             sequence start end count remove-empty-subseqs))))
   
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (export '(curry ensure-boolean ensure-list flip rcurry riffle split-sequence
-            split-sequence-if split-sequence-if-not)))
+  (export '(curry ensure-boolean ensure-list flip range rcurry riffle
+            split-sequence split-sequence-if split-sequence-if-not)))
 
 ;;;; END OF quickutils.lisp ;;;;

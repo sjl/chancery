@@ -21,10 +21,6 @@
   `(loop :repeat ,n :collect (progn ,@body)))
 
 
-(defun prefix-sums (sequence &aux (sum 0))
-  (map 'list (lambda (n) (incf sum n)) sequence))
-
-
 (defun emptyp (string)
   (zerop (length string)))
 
@@ -48,11 +44,18 @@
   (ensure-boolean (member character '(#\a #\e #\i #\o #\u
                                       #\A #\E #\I #\O #\U))))
 
+
+(defun prefix-sums (sequence &aux (sum 0))
+  (map 'list (lambda (n) (incf sum n)) sequence))
+
 (defun separate-with-spaces (list)
   (-<> list
     (split-sequence :. <>)
-    (mapcar (rcurry #'riffle " ") <>)
+    (mapcar (rcurry #'riffle #\Space) <>)
     (apply #'append <>)))
+
+(defun join-string (&rest parts)
+  (apply #'cat (mapcar #'princ-to-string parts)))
 
 
 ;;;; Weightlists --------------------------------------------------------------
@@ -94,35 +97,6 @@
         :when (< n weight) :do (return item)))
 
 
-(defun build-weightlist-uniform (values)
-  (make-weightlist values (loop :for nil :in values :collect 1)))
-
-(defun build-weightlist-weighted (values)
-  (make-weightlist (mapcar #'second values)
-                   (mapcar #'first values)))
-
-(defun build-weightlist-zipf (values &key (exponent 1.0))
-  (loop
-    :with size = (length values)
-    :with denominator = (loop :for n :from 1.0 :to size
-                              :sum (/ (expt n exponent)))
-    :repeat size
-    :for rank :from 1
-    :for weight = (/ (/ (expt rank exponent))
-                     denominator)
-    :collect weight :into weights
-    :finally (return (make-weightlist values weights))))
-
-(defun build-weightlist (distribution-and-options values)
-  (destructuring-bind (distribution &rest options)
-      (ensure-list distribution-and-options)
-    (apply (ecase distribution
-             (:uniform #'build-weightlist-uniform)
-             (:weighted #'build-weightlist-weighted)
-             (:zipf #'build-weightlist-zipf))
-           values options)))
-
-
 ;;;; Data ---------------------------------------------------------------------
 (defun data-special-form-p (form)
   (ensure-boolean (and (consp form)
@@ -132,47 +106,98 @@
   '(satisfies data-special-form-p))
 
 
-(defun evaluate-sequence (seq)
-  (map (type-of seq) #'evaluate-expression seq))
+(defun compile-sequence (seq)
+  (let ((contents (map 'list #'compile-expression seq)))
+    (etypecase seq
+      (list `(list ,@contents)))))
 
-(defun evaluate-symbol (symbol)
-  (if (fboundp symbol)
-    (funcall symbol)
-    (symbol-value symbol)))
+(defun compile-symbol (symbol)
+  `(,symbol))
 
-(defun evaluate-lisp (expr)
-  (eval expr))
-
-(defun evaluate-data-special-form (expr)
+(defun compile-data-special-form (expr)
   (destructuring-bind (symbol argument) expr
     (ecase symbol
-      (quote argument)
-      (eval (evaluate-lisp argument)))))
+      (quote `(quote ,argument))
+      (eval argument))))
 
-
-(defun evaluate-expression (expr)
+(defun compile-expression (expr)
   (typecase expr
-    (non-keyword-symbol (evaluate-symbol expr))
-    (data-special-form (evaluate-data-special-form expr))
+    (null expr)
+    (non-keyword-symbol (compile-symbol expr))
+    (data-special-form (compile-data-special-form expr))
     (string expr)
-    (sequence (evaluate-sequence expr))
+    (sequence (compile-sequence expr))
     (t expr)))
 
 
-(defun build-define-rule (evaluator name-and-options expressions)
-  (destructuring-bind (name &key (distribution :uniform))
+(defun build-weightlist-weighted (size weights)
+  (make-weightlist (range 0 size) weights))
+
+(defun build-weightlist-zipf (size exponent)
+  (loop
+    :with denominator = (loop :for n :from 1.0 :to size
+                              :sum (/ (expt n exponent)))
+    :repeat size
+    :for rank :from 1
+    :for item :from 0
+    :for weight = (/ (/ (expt rank exponent))
+                     denominator)
+    :collect item :into items
+    :collect weight :into weights
+    :finally (return (make-weightlist items weights))))
+
+
+(defun compile-selector-uniform (expressions)
+  (values `(random ,(length expressions))
+          expressions))
+
+(defun compile-selector-weighted (expressions)
+  (values `(weightlist-random
+             ,(build-weightlist-weighted (length expressions)
+                                         (mapcar #'first expressions)))
+          (mapcar #'second expressions)))
+
+(defun compile-selector-zipf (expressions &key (exponent 1.0))
+  (values `(weightlist-random
+             ,(build-weightlist-zipf (length expressions) exponent))
+          expressions))
+
+(defun compile-selector (distribution-and-options expressions)
+  (destructuring-bind (distribution &rest options)
+      (ensure-list distribution-and-options)
+    (apply (ecase distribution
+             (:uniform #'compile-selector-uniform)
+             (:weighted #'compile-selector-weighted)
+             (:zipf #'compile-selector-zipf))
+           expressions
+           options)))
+
+
+(defun compile-define-rule (expression-compiler name-and-options expressions)
+  (destructuring-bind (name &key
+                            documentation
+                            (distribution :uniform)
+                            (arguments '()))
       (ensure-list name-and-options)
-    `(defun ,name ()
-       (,evaluator
-         (weightlist-random ,(build-weightlist distribution expressions))))))
+    `(defun ,name ,arguments
+       ,@(ensure-list documentation)
+       ,(if (= 1 (length expressions))
+         (funcall expression-compiler (first expressions))
+         (multiple-value-bind (selector expressions)
+             (compile-selector distribution expressions)
+           `(case ,selector
+              ,@(loop
+                 :for i :from 0
+                 :for expression :in expressions
+                 :collect `(,i ,(funcall expression-compiler expression)))))))))
 
 
 (defmacro define-rule (name-and-options &rest expressions)
-  (build-define-rule 'evaluate-expression name-and-options expressions))
+  (compile-define-rule #'compile-expression name-and-options expressions))
 
 (defmacro gen (expression)
   "Generate a single Chancery expression."
-  `(evaluate-expression ',expression))
+  (compile-expression expression))
 
 
 ;;;; Strings ------------------------------------------------------------------
@@ -184,39 +209,43 @@
   '(satisfies string-special-form-p))
 
 
-(defun evaluate-string-combination (list)
-  (-<> list
-    (separate-with-spaces <>)
-    (mapcar #'evaluate-string-expression <>)
-    (apply #'cat (mapcar #'princ-to-string <>))))
+(defun compile-string-combination (list)
+  (let ((contents (-<> list
+                    (separate-with-spaces <>)
+                    (mapcar #'compile-string-expression <>))))
+    `(join-string ,@contents)))
 
-(defun evaluate-string-modifiers (vector)
-  (reduce (flip #'funcall) vector
-          :start 1
-          :initial-value
-          (princ-to-string (evaluate-string-expression (aref vector 0)))))
+(defun compile-string-modifiers (vector)
+  (labels ((recur (modifiers)
+             (if (null modifiers)
+               (compile-expression (aref vector 0))
+               `(,(first modifiers)
+                 ,(recur (rest modifiers))))))
+    (recur (nreverse (coerce (subseq vector 1) 'list)))))
 
-(defun evaluate-string-sequence (sequence-type seq)
-  (map sequence-type #'evaluate-string-expression seq))
+(defun compile-string-sequence (sequence-type seq)
+  (let ((contents (map 'list #'compile-string-expression seq)))
+    (ecase sequence-type
+      (list `(list ,@contents)))))
 
-(defun evaluate-string-special-form (expr)
+(defun compile-string-special-form (expr)
   (destructuring-bind (symbol . body) expr
     (ecase symbol
-      (quote (first body))
-      (list (evaluate-string-sequence 'list body))
-      (vector (evaluate-string-sequence 'vector body))
-      (eval (evaluate-lisp (first body))))))
+      (quote `(quote ,(first body)))
+      (list (compile-string-sequence 'list body))
+      (vector (compile-string-sequence 'vector body))
+      (eval (first body)))))
 
 
-(defun evaluate-string-expression (expr)
-  (typecase expr
-    (string expr)
+(defun compile-string-expression (expression)
+  (typecase expression
+    (string expression)
     (null "")
-    (non-keyword-symbol (evaluate-symbol expr))
-    (string-special-form (evaluate-string-special-form expr))
-    (vector (evaluate-string-modifiers expr))
-    (cons (evaluate-string-combination expr))
-    (t expr)))
+    (non-keyword-symbol (compile-symbol expression))
+    (string-special-form (compile-string-special-form expression))
+    (vector (compile-string-modifiers expression))
+    (cons (compile-string-combination expression))
+    (t expression)))
 
 
 (defmacro define-string (name-and-options &rest expressions)
@@ -236,11 +265,11 @@
       (name \"went to the\" place :. \".\"))
 
   "
-  (build-define-rule 'evaluate-string-expression name-and-options expressions))
+  (compile-define-rule 'compile-string-expression name-and-options expressions))
 
 (defmacro gen-string (expression)
   "Generate a single Chancery string expression."
-  `(evaluate-string-expression ',expression))
+  (compile-string-expression expression))
 
 
 ;;;; Modifiers ----------------------------------------------------------------

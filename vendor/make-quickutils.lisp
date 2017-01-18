@@ -8,6 +8,7 @@
                :ensure-boolean
                :ensure-list
                :flip
+               :range
                :rcurry
                :riffle
                :split-sequence
