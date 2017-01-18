@@ -45,7 +45,8 @@
   (subseq string 0 (max 0 (- (length string) n))))
 
 (defun vowelp (character)
-  (ensure-boolean (member character '(#\a #\e #\i #\o #\u))))
+  (ensure-boolean (member character '(#\a #\e #\i #\o #\u
+                                      #\A #\E #\I #\O #\U))))
 
 (defun separate-with-spaces (list)
   (-<> list
@@ -263,13 +264,14 @@
 
 (defun s (string)
   "Pluralize `string`."
+  ;; todo: fix for caps
   (assert-nonempty string "Cannot pluralize an empty string.")
   (case (ch string -1)
-    (#\y (if (vowelp (ch string -2))
-           (cat string "s")
-           (cat (chop string 1) "ies")))
-    (#\x (cat (chop string 1) "en"))
-    ((#\z #\h) (cat (chop string 1) "es"))
+    ((#\y #\Y) (if (vowelp (ch string -2))
+                 (cat string "s")
+                 (cat (chop string 1) "ies")))
+    ((#\x #\X) (cat (chop string 1) "en"))
+    ((#\z #\h #\Z #\H) (cat (chop string 1) "es"))
     (t (cat string "s"))))
 
 (defun pos (string)
