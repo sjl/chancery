@@ -2,7 +2,7 @@
 ;;;; See http://quickutil.org for details.
 
 ;;;; To regenerate:
-;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:CURRY :ENSURE-BOOLEAN :ENSURE-LIST :FLIP :RANGE :RCURRY :RIFFLE :SPLIT-SEQUENCE) :ensure-package T :package "CHANCERY.QUICKUTILS")
+;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:CURRY :ENSURE-BOOLEAN :ENSURE-LIST :FLIP :HASH-TABLE-ALIST :RANGE :RCURRY :RIFFLE :SPLIT-SEQUENCE) :ensure-package T :package "CHANCERY.QUICKUTILS")
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (unless (find-package "CHANCERY.QUICKUTILS")
@@ -15,8 +15,8 @@
 (when (boundp '*utilities*)
   (setf *utilities* (union *utilities* '(:MAKE-GENSYM-LIST :ENSURE-FUNCTION
                                          :CURRY :ENSURE-BOOLEAN :ENSURE-LIST
-                                         :FLIP :RANGE :RCURRY :RIFFLE
-                                         :SPLIT-SEQUENCE))))
+                                         :FLIP :HASH-TABLE-ALIST :RANGE :RCURRY
+                                         :RIFFLE :SPLIT-SEQUENCE))))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun make-gensym-list (length &optional (x "G"))
     "Returns a list of `length` gensyms, each generated as if with a call to `make-gensym`,
@@ -77,6 +77,16 @@ it is called with to `function`."
     "Return a function whose argument order of a binary function `f` is reversed."
     #'(lambda (y x)
         (funcall f x y)))
+  
+
+  (defun hash-table-alist (table)
+    "Returns an association list containing the keys and values of hash table
+`table`."
+    (let ((alist nil))
+      (maphash (lambda (k v)
+                 (push (cons k v) alist))
+               table)
+      alist))
   
 
   (defun range (start end &key (step 1) (key 'identity))
@@ -225,7 +235,7 @@ stopped."
                             sequence start end count remove-empty-subseqs))))
   
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (export '(curry ensure-boolean ensure-list flip range rcurry riffle
-            split-sequence split-sequence-if split-sequence-if-not)))
+  (export '(curry ensure-boolean ensure-list flip hash-table-alist range rcurry
+            riffle split-sequence split-sequence-if split-sequence-if-not)))
 
 ;;;; END OF quickutils.lisp ;;;;

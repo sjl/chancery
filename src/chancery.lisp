@@ -76,15 +76,15 @@
     :total (apply #'+ 0.0 weights)))
 
 
-(defmethod print-object ((wl weightlist) s)
-  (print-unreadable-object (wl s :type t)
+(defmethod print-object ((object weightlist) stream)
+  (print-unreadable-object (object stream :type t)
     (prin1 (mapcar #'list
-                   (weightlist-weights wl)
-                   (weightlist-items wl))
-           s)))
+                   (weightlist-weights object)
+                   (weightlist-items object))
+           stream)))
 
-(defmethod make-load-form ((wl weightlist) &optional environment)
-  (make-load-form-saving-slots wl
+(defmethod make-load-form ((object weightlist) &optional environment)
+  (make-load-form-saving-slots object
                                :slot-names '(weights sums items total)
                                :environment environment))
 
