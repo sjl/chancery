@@ -97,37 +97,37 @@
         :when (< n weight) :do (return item)))
 
 
-;;;; Data ---------------------------------------------------------------------
-(defun data-special-form-p (form)
-  (ensure-boolean (and (consp form)
-                       (member (first form) '(quote eval)))))
+;;;; Core ---------------------------------------------------------------------
+(defun special-form-p (form)
+  (ensure-boolean
+    (and (consp form)
+         (member (first form) '(quote eval)))))
 
-(deftype data-special-form ()
-  '(satisfies data-special-form-p))
+(deftype special-form ()
+  '(satisfies special-form-p))
 
 
-(defun compile-sequence (seq)
-  (let ((contents (map 'list #'compile-expression seq)))
-    (etypecase seq
-      (list `(list ,@contents)))))
+(defun compile-list (contents)
+  `(list ,@(mapcar #'compile-expression contents)))
 
 (defun compile-symbol (symbol)
   `(,symbol))
 
-(defun compile-data-special-form (expr)
-  (destructuring-bind (symbol argument) expr
+(defun compile-special-form (expression)
+  (destructuring-bind (symbol argument) expression
     (ecase symbol
       (quote `(quote ,argument))
       (eval argument))))
 
-(defun compile-expression (expr)
-  (typecase expr
-    (null expr)
-    (non-keyword-symbol (compile-symbol expr))
-    (data-special-form (compile-data-special-form expr))
-    (string expr)
-    (sequence (compile-sequence expr))
-    (t expr)))
+(defun compile-expression (expression)
+  (typecase expression
+    (null expression)
+    (non-keyword-symbol (compile-symbol expression))
+    (special-form (compile-special-form expression))
+    (string expression)
+    (list (compile-list expression))
+    ; todo: vectors?
+    (t expression)))
 
 
 (defun build-weightlist-weighted (size weights)
@@ -173,6 +173,17 @@
            options)))
 
 
+(defun compile-rule-body (expression-compiler expressions distribution)
+  (if (= 1 (length expressions))
+    (funcall expression-compiler (first expressions))
+    (multiple-value-bind (selector expressions)
+        (compile-selector distribution expressions)
+      `(case ,selector
+         ,@(loop
+            :for i :from 0
+            :for expression :in expressions
+            :collect `(,i ,(funcall expression-compiler expression)))))))
+
 (defun compile-define-rule (expression-compiler name-and-options expressions)
   (destructuring-bind (name &key
                             documentation
@@ -181,15 +192,7 @@
       (ensure-list name-and-options)
     `(defun ,name ,arguments
        ,@(ensure-list documentation)
-       ,(if (= 1 (length expressions))
-         (funcall expression-compiler (first expressions))
-         (multiple-value-bind (selector expressions)
-             (compile-selector distribution expressions)
-           `(case ,selector
-              ,@(loop
-                 :for i :from 0
-                 :for expression :in expressions
-                 :collect `(,i ,(funcall expression-compiler expression)))))))))
+       ,(compile-rule-body expression-compiler expressions distribution))))
 
 
 (defmacro define-rule (name-and-options &rest expressions)
@@ -201,70 +204,29 @@
 
 
 ;;;; Strings ------------------------------------------------------------------
-(defun string-special-form-p (form)
-  (ensure-boolean (and (consp form)
-                       (member (first form) '(quote eval list vector)))))
-
-(deftype string-special-form ()
-  '(satisfies string-special-form-p))
-
-
 (defun compile-string-combination (list)
-  (let ((contents (-<> list
+  `(join-string ,@(-<> list
                     (separate-with-spaces <>)
                     (mapcar #'compile-string-expression <>))))
-    `(join-string ,@contents)))
 
 (defun compile-string-modifiers (vector)
-  (labels ((recur (modifiers)
-             (if (null modifiers)
-               (compile-expression (aref vector 0))
-               `(,(first modifiers)
-                 ,(recur (rest modifiers))))))
-    (recur (nreverse (coerce (subseq vector 1) 'list)))))
-
-(defun compile-string-sequence (sequence-type seq)
-  (let ((contents (map 'list #'compile-string-expression seq)))
-    (ecase sequence-type
-      (list `(list ,@contents)))))
-
-(defun compile-string-special-form (expr)
-  (destructuring-bind (symbol . body) expr
-    (ecase symbol
-      (quote `(quote ,(first body)))
-      (list (compile-string-sequence 'list body))
-      (vector (compile-string-sequence 'vector body))
-      (eval (first body)))))
-
+  ; #("foo" a b c) => (c (b (a "foo")))
+  (reduce (flip #'list) vector
+          :start 1
+          :initial-value (compile-expression (aref vector 0))))
 
 (defun compile-string-expression (expression)
   (typecase expression
     (string expression)
     (null "")
     (non-keyword-symbol (compile-symbol expression))
-    (string-special-form (compile-string-special-form expression))
+    (special-form (compile-special-form expression))
     (vector (compile-string-modifiers expression))
     (cons (compile-string-combination expression))
     (t expression)))
 
 
 (defmacro define-string (name-and-options &rest expressions)
-  "Define a Chancery string rule for the symbol `name`.
-
-  Each expression in `expressions` can be any valid Chancery expression.  When
-  the rule is invoked one will be chosen at random and evaluated.
-
-  Examples:
-
-    (define-rule name \"Alice\" \"Bob\" \"Carol\")
-    (define-rule place \"forest\" \"mountain\")
-    (define-rule emotion \"happy\" \"sad\")
-
-    (define-rule sentence
-      (name \"was\" emotion :. \".\")
-      (name \"went to the\" place :. \".\"))
-
-  "
   (compile-define-rule 'compile-string-expression name-and-options expressions))
 
 (defmacro gen-string (expression)
