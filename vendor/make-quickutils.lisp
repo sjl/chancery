@@ -8,7 +8,6 @@
                :ensure-boolean
                :ensure-list
                :flip
-               :hash-table-alist
                :range
                :rcurry
                :riffle
