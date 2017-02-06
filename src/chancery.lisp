@@ -256,13 +256,17 @@
 (defun s (string)
   "Pluralize `string`."
   ;; todo: fix for caps
+  ;; todo: make this suck less in general, see http://blog.writeathome.com/index.php/2011/12/how-to-make-nouns-plural/
   (assert-nonempty string "Cannot pluralize an empty string.")
-  (case (ch string -1)
-    ((#\y #\Y) (if (vowelp (ch string -2))
-                 (cat string "s")
-                 (cat (chop string 1) "ies")))
-    ((#\x #\X) (cat (chop string 1) "en"))
-    ((#\z #\h #\Z #\H) (cat (chop string 1) "es"))
+  (case (char-downcase (ch string -1))
+    (#\y (if (vowelp (ch string -2))
+           (cat string "s")
+           (cat (chop string 1) "ies")))
+    ((#\x #\s #\z) (cat string "es"))
+    (#\h (cat string
+              (case (ch string -2)
+                ((#\c #\s) "es")
+                (t "s"))))
     (t (cat string "s"))))
 
 (defun pos (string)
