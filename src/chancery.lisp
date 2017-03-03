@@ -5,14 +5,19 @@
   '(and symbol (not keyword)))
 
 
-(defmacro -<> (&rest forms)
+(defmacro -<> (expr &rest forms)
+  "Thread the given forms, with `<>` as a placeholder."
   ;; I am going to lose my fucking mind if I have to program lisp without
   ;; a threading macro, but I don't want to add another dep to this library, so
   ;; here we are.
-  (if (null forms)
-    '<>
-    `(let ((<> ,(first forms)))
-       (-<> ,@(rest forms)))))
+  `(let* ((<> ,expr)
+          ,@(mapcar (lambda (form)
+                      (if (symbolp form)
+                        `(<> (,form <>))
+                        `(<> ,form)))
+                    forms))
+     <>))
+
 
 (defmacro assert-nonempty (place message)
   `(assert (not (emptyp ,place)) (,place) ,message))

@@ -32,36 +32,29 @@ Capitalize each word of `string`.
 
 ### `DEFINE-RULE` (macro)
 
-    (DEFINE-RULE NAME &REST EXPRESSIONS)
+    (DEFINE-RULE NAME-AND-OPTIONS &REST EXPRESSIONS)
 
-Define a Chancery rule for the symbol `name`.
+### `DEFINE-STRING` (macro)
 
-  Each expression in `expressions` can be any valid Chancery expression.  When
-  the rule is invoked one will be chosen at random and evaluated.
+    (DEFINE-STRING NAME-AND-OPTIONS &REST EXPRESSIONS)
 
-  Examples:
+### `GEN` (macro)
 
-    (define-rule name "Alice" "Bob" "Carol")
-    (define-rule place "forest" "mountain")
-    (define-rule emotion "happy" "sad")
+    (GEN EXPRESSION)
 
-    (define-rule sentence
-      (name "was" emotion :. ".")
-      (name "went to the" place :. "."))
+Generate a single Chancery expression.
 
-  
+### `GEN-STRING` (macro)
+
+    (GEN-STRING EXPRESSION)
+
+Generate a single Chancery string expression.
 
 ### `POS` (function)
 
     (POS STRING)
 
 Make `string` posessive by adding an apostrophe (and possibly an s).
-
-### `Q` (function)
-
-    (Q STRING)
-
-Wrap `string` in quotation marks.
 
 ### `S` (function)
 
