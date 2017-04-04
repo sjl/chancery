@@ -14,7 +14,7 @@ Lisp.  It's heavily inspired by [Tracery][].
 [Tracery]: http://tracery.io/
 
 * **License:** MIT
-* **Documentation:** <http://sjl.bitbucket.org/chancery/>
+* **Documentation:** <https://sjl.bitbucket.io/chancery/>
 * **Mercurial:** <http://bitbucket.org/sjl/chancery/>
 * **Git:** <http://github.com/sjl/chancery/>
 
