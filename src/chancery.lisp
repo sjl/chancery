@@ -63,6 +63,13 @@
   (apply #'cat (mapcar #'princ-to-string parts)))
 
 
+;;;; RNG ----------------------------------------------------------------------
+(defparameter *random* #'random)
+
+(defun chancery-random (n)
+  (funcall *random* n))
+
+
 ;;;; Weightlists --------------------------------------------------------------
 (defstruct (weightlist (:constructor %make-weightlist))
   weights sums items total)
@@ -96,7 +103,7 @@
 
 (defun weightlist-random (weightlist)
   "Return a random item from the weightlist, taking the weights into account."
-  (loop :with n = (random (weightlist-total weightlist))
+  (loop :with n = (chancery-random (weightlist-total weightlist))
         :for item :in (weightlist-items weightlist)
         :for weight :in (weightlist-sums weightlist)
         :when (< n weight) :do (return item)))
@@ -153,7 +160,7 @@
 
 
 (defun compile-selector-uniform (expressions)
-  (values `(random ,(length expressions))
+  (values `(chancery-random ,(length expressions))
           expressions))
 
 (defun compile-selector-weighted (expressions)
@@ -168,14 +175,14 @@
           expressions))
 
 (defun compile-selector (distribution-and-options expressions)
-  (destructuring-bind (distribution &rest options)
+  (destructuring-bind (distribution &rest distribution-options)
       (ensure-list distribution-and-options)
     (apply (ecase distribution
              (:uniform #'compile-selector-uniform)
              (:weighted #'compile-selector-weighted)
              (:zipf #'compile-selector-zipf))
            expressions
-           options)))
+           distribution-options)))
 
 
 (defun compile-rule-body (expression-compiler expressions distribution)
@@ -189,6 +196,7 @@
             :for expression :in expressions
             :collect `(,i ,(funcall expression-compiler expression)))))))
 
+
 (defun compile-define-rule (expression-compiler name-and-options expressions)
   (destructuring-bind (name &key
                             documentation
@@ -199,11 +207,27 @@
        ,@(ensure-list documentation)
        ,(compile-rule-body expression-compiler expressions distribution))))
 
+(defun compile-create-rule (expression-compiler options expressions)
+  (destructuring-bind (&key documentation
+                            (distribution :uniform)
+                            (arguments '()))
+      options
+    (compile nil
+             `(lambda ,arguments
+                ,@(ensure-list documentation)
+                ,(compile-rule-body expression-compiler
+                                    expressions
+                                    distribution)))))
+
 
 (defmacro define-rule (name-and-options &rest expressions)
   (compile-define-rule #'compile-expression name-and-options expressions))
 
-(defmacro gen (expression)
+(defun create-rule (expressions &rest options)
+  (compile-create-rule #'compile-expression options expressions))
+
+
+(defmacro generate (expression)
   "Generate a single Chancery expression."
   (compile-expression expression))
 
@@ -232,9 +256,13 @@
 
 
 (defmacro define-string (name-and-options &rest expressions)
-  (compile-define-rule 'compile-string-expression name-and-options expressions))
+  (compile-define-rule #'compile-string-expression name-and-options expressions))
 
-(defmacro gen-string (expression)
+(defun create-string (expressions &rest options)
+  (compile-create-rule #'compile-string-expression options expressions))
+
+
+(defmacro generate-string (expression)
   "Generate a single Chancery string expression."
   (compile-string-expression expression))
 

@@ -2,7 +2,7 @@
 ;;;; See http://quickutil.org for details.
 
 ;;;; To regenerate:
-;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:CURRY :ENSURE-BOOLEAN :ENSURE-LIST :FLIP :RANGE :RCURRY :RIFFLE :SPLIT-SEQUENCE) :ensure-package T :package "CHANCERY.QUICKUTILS")
+;;;; (qtlc:save-utils-as "quickutils.lisp" :utilities '(:CURRY :ENSURE-BOOLEAN :ENSURE-LIST :FLIP :RANGE :RCURRY :RIFFLE :SPLIT-SEQUENCE :SYMB) :ensure-package T :package "CHANCERY.QUICKUTILS")
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (unless (find-package "CHANCERY.QUICKUTILS")
@@ -16,7 +16,7 @@
   (setf *utilities* (union *utilities* '(:MAKE-GENSYM-LIST :ENSURE-FUNCTION
                                          :CURRY :ENSURE-BOOLEAN :ENSURE-LIST
                                          :FLIP :RANGE :RCURRY :RIFFLE
-                                         :SPLIT-SEQUENCE))))
+                                         :SPLIT-SEQUENCE :MKSTR :SYMB))))
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun make-gensym-list (length &optional (x "G"))
     "Returns a list of `length` gensyms, each generated as if with a call to `make-gensym`,
@@ -224,8 +224,25 @@ stopped."
                               (position-if-not predicate sequence :start start :key key))
                             sequence start end count remove-empty-subseqs))))
   
+
+  (defun mkstr (&rest args)
+    "Receives any number of objects (string, symbol, keyword, char, number), extracts all printed representations, and concatenates them all into one string.
+
+Extracted from _On Lisp_, chapter 4."
+    (with-output-to-string (s)
+      (dolist (a args) (princ a s))))
+  
+
+  (defun symb (&rest args)
+    "Receives any number of objects, concatenates all into one string with `#'mkstr` and converts them to symbol.
+
+Extracted from _On Lisp_, chapter 4.
+
+See also: `symbolicate`"
+    (values (intern (apply #'mkstr args))))
+  
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (export '(curry ensure-boolean ensure-list flip range rcurry riffle
-            split-sequence split-sequence-if split-sequence-if-not)))
+            split-sequence split-sequence-if split-sequence-if-not symb)))
 
 ;;;; END OF quickutils.lisp ;;;;

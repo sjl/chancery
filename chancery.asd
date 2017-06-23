@@ -8,6 +8,8 @@
 
   :depends-on (:named-readtables)
 
+  :in-order-to ((asdf:test-op (asdf:test-op :chancery.test)))
+
   :serial t
   :components ((:module "vendor" :serial t
                 :components ((:file "quickutils-package")

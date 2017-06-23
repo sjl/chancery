@@ -3,8 +3,12 @@
   (:export
     :define-rule
     :define-string
-    :gen
-    :gen-string
+
+    :create-rule
+    :create-string
+
+    :generate
+    :generate-string
 
     :quote
     :eval
@@ -16,4 +20,6 @@
     :q
     :a
     :s
-    :pos))
+    :pos
+
+    :*random*))

@@ -11,11 +11,11 @@
 
 (defun gen-reader (stream char)
   (declare (ignore char))
-  `(gen ,(read stream t t t)))
+  `(generate ,(read stream t t t)))
 
 (defun gen-string-reader (stream char)
   (declare (ignore char))
-  `(gen-string ,(read stream t t t)))
+  `(generate-string ,(read stream t t t)))
 
 
 (named-readtables:defreadtable :chancery

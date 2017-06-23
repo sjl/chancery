@@ -12,6 +12,7 @@
                :rcurry
                :riffle
                :split-sequence
+               :symb
 
                )
   :package "CHANCERY.QUICKUTILS")
