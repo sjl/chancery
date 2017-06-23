@@ -1,4 +1,4 @@
-.PHONY: vendor pubdocs
+.PHONY: vendor pubdocs test test-sbcl test-ccl test-ecl test-abcl
 
 sourcefiles = $(shell ffind --full-path --literal .lisp)
 docfiles = $(shell ls docs/*.markdown)
