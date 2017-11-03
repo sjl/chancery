@@ -72,4 +72,4 @@
   (is (eql (sample-rule) :foo))
   (is (string= (sample-string) "Hello FOO")))
 
-;; (run-tests)
+(run-tests)
