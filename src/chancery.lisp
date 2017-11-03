@@ -64,7 +64,8 @@
 
 
 ;;;; RNG ----------------------------------------------------------------------
-(defparameter *random* #'random)
+(defparameter *random* #'random
+  "The random number generation function to use (default: `CL:RANDOM`).")
 
 (defun chancery-random (n)
   (funcall *random* n))
@@ -221,15 +222,98 @@
 
 
 (defmacro define-rule (name-and-options &rest expressions)
+  "Define a function that will return random elements of `expressions`.
+
+  `name-and-options` should be of the form:
+
+    (name &key documentation (distribution :uniform) (arguments '()))
+
+  If no options are needed a bare symbol can be given.
+
+  `name` is the symbol under which the resulting function will be defined.
+
+  `documentation` will be used as a docstring for the resulting function.
+
+  `distribution` denotes the distribution of elements returned.
+
+  `arguments` is the arglist of the resulting function.
+
+  Examples:
+
+    (define-rule color
+      :blue
+      :green
+      :red)
+
+    (define-rule (metal :documentation \"Return a random metal.\"
+                        :distribution :zipf)
+      :copper
+      :silver
+      :gold
+      :platinum)
+
+  See the full documentation for more information.
+
+  "
   (compile-define-rule #'compile-expression name-and-options expressions))
 
 (defun create-rule (expressions &rest options)
+  "Return a function that will return random elements of `expressions`.
+
+  `options` should be of the form:
+
+    (&key documentation (distribution :uniform) (arguments '()))
+
+  `documentation` will be used as a docstring for the resulting function.
+
+  `distribution` denotes the distribution of elements returned.
+
+  `arguments` is the arglist of the resulting function.
+
+  Examples:
+
+    (create-rule (list :blue :red :green))
+
+    (create-rule (list :copper :silver :gold :platinum)
+      :documentation \"Return a random metal.\"
+      :distribution :zipf)
+
+  See the full documentation for more information.
+
+  "
   (compile-create-rule #'compile-expression options expressions))
 
-
 (defmacro generate (expression)
-  "Generate a single Chancery expression."
+  "Generate a single Chancery expression.
+
+  Example:
+
+    (define-rule x 1 2 3)
+
+    (generate (x x x))
+    ; => (1 3 1)
+
+  "
   (compile-expression expression))
+
+(defun invoke-generate (expression)
+  "Generate a single Chancery expression.
+
+  THIS FUNCTION IS EXPERIMENTAL AND SUBJECT TO CHANGE IN THE FUTURE.
+
+  Because this is a function, not a macro, you'll need to do the quoting
+  yourself:
+
+    (define-rule x 1 2 3)
+
+    (generate (x x x))
+    ; => (1 3 3)
+
+    (invoke-generate '(x x x))
+    ; => (2 1 2)
+
+  "
+  (eval (compile-expression expression)))
 
 
 ;;;; Strings ------------------------------------------------------------------
@@ -240,9 +324,13 @@
 
 (defun compile-string-modifiers (vector)
   ; #("foo" a b c) => (c (b (a "foo")))
-  (reduce (flip #'list) vector
-          :start 1
-          :initial-value (compile-expression (aref vector 0))))
+  `(princ-to-string
+     ,(reduce (flip #'list) vector
+              :start 1
+              :initial-value (compile-string-expression (aref vector 0)))))
+
+(defun compile-string-other (expr)
+  `(princ-to-string ,expr))
 
 (defun compile-string-expression (expression)
   (typecase expression
@@ -252,19 +340,98 @@
     (special-form (compile-special-form expression))
     (vector (compile-string-modifiers expression))
     (cons (compile-string-combination expression))
-    (t expression)))
+    (t (compile-string-other expression))))
 
 
 (defmacro define-string (name-and-options &rest expressions)
+  "Define a function that will return random stringified elements of `expressions`.
+
+  `name-and-options` should be of the form:
+
+    (name &key documentation (distribution :uniform) (arguments '()))
+
+  If no options are needed a bare symbol can be given.
+
+  `name` is the symbol under which the resulting function will be defined.
+
+  `documentation` will be used as a docstring for the resulting function.
+
+  `distribution` denotes the distribution of elements returned.
+
+  `arguments` is the arglist of the resulting function.
+
+  Examples:
+
+    (define-string color \"white\" \"gray\" \"black\")
+
+    (define-string (animal :distribution :weighted)
+      (100 (color \"cat\"))
+      (100 (color \"dog\"))
+      (100 (color \"dragon\")))
+
+  See the full documentation for more information.
+
+  "
   (compile-define-rule #'compile-string-expression name-and-options expressions))
 
 (defun create-string (expressions &rest options)
+  "Return a function that will return random stringified elements of `expressions`.
+
+  `options` should be of the form:
+
+    (&key documentation (distribution :uniform) (arguments '()))
+
+  `documentation` will be used as a docstring for the resulting function.
+
+  `distribution` denotes the distribution of elements returned.
+
+  `arguments` is the arglist of the resulting function.
+
+  Examples:
+
+    (create-string (list \"white\" \"gray\" \"black\"))
+
+    (create-string '((100 (color \"cat\"))
+                     (100 (color \"dog\"))
+                     (100 (color \"dragon\")))
+      :distribution :weighted)
+
+  See the full documentation for more information.
+
+  "
   (compile-create-rule #'compile-string-expression options expressions))
 
-
 (defmacro generate-string (expression)
-  "Generate a single Chancery string expression."
+  "Generate and stringify a single Chancery string expression.
+
+  Example:
+
+    (define-string x 1 2 3)
+
+    (generate-string (x x x))
+    ; => \"1 3 1\"
+
+  "
   (compile-string-expression expression))
+
+(defun invoke-generate-string (expression)
+  "Generate and stringify a single Chancery expression.
+
+  THIS FUNCTION IS EXPERIMENTAL AND SUBJECT TO CHANGE IN THE FUTURE.
+
+  Because this is a function, not a macro, you'll need to do the quoting
+  yourself:
+
+    (define-string x 1 2 3)
+
+    (generate-string (x x x))
+    ; => \"1 3 3\"
+
+    (invoke-generate-string '(x x x))
+    ; => \"2 1 2\"
+
+  "
+  (eval (compile-string-expression expression)))
 
 
 ;;;; Modifiers ----------------------------------------------------------------

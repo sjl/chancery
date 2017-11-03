@@ -3,7 +3,7 @@ Lisp.  It's heavily inspired by [Tracery][].
 
 [Tracery]: http://tracery.io/
 
-* **License:** MIT
+* **License:** MIT/X11
 * **Documentation:** <https://sjl.bitbucket.io/chancery/>
 * **Mercurial:** <http://bitbucket.org/sjl/chancery/>
 * **Git:** <http://github.com/sjl/chancery/>
