@@ -3,7 +3,7 @@
 
   :author "Steve Losh <steve@stevelosh.com>"
 
-  :license "MIT"
+  :license "MIT/X11"
   :version "1.0.0"
 
   :depends-on (:named-readtables)
