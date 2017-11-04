@@ -153,11 +153,11 @@ more often than others:
 
     :::lisp
     (define-rule (metal :distribution :weighted)
-      (10 iron)
-      (5 steel)
-      (2 silver)
-      (1 gold)
-      (1 platinum))
+      (10 :iron)
+      (5 :steel)
+      (2 :silver)
+      (1 :gold)
+      (1 :platinum))
 
 Weighting each term by hand can be tedious.  Chancery can automatically
 calculate weights based on the order of the body terms according to [Zipf's
