@@ -170,9 +170,9 @@ law][zipf]:
       :banded-mail
       :plate-mail)
 
-The Zipf distribution can itself take an argument `exponent`, which is the
-exponent characterizing the distribution.  The default is `1.0`, and larger
-exponents will result in the earlier terms being chosen more often:
+The Zipf distribution can take an argument `exponent`, which is the exponent
+characterizing the distribution.  The default is `1.0`, and larger exponents
+will result in the earlier terms being chosen more often:
 
     :::lisp
     (define-rule (foo :distribution :zipf)
@@ -419,8 +419,8 @@ would for any other Lisp function.
 Examples
 --------
 
-If you want some less trivial examples than the ones seen here you might want to
-take a look at some of the Twitter bots I've built with Chancery:
+If you want some less trivial examples than the ones seen here, you might want
+to take a look at some of the Twitter bots I've built with Chancery:
 
 * [@git\_commands](http://twitter.com/git_commands)
   ([code](https://github.com/sjl/magitek/blob/master/src/robots/git-commands.lisp))
