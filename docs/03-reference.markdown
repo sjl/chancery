@@ -192,6 +192,48 @@ Generate and stringify a single Chancery string expression.
 
   
 
+### `INVOKE-GENERATE` (function)
+
+    (INVOKE-GENERATE EXPRESSION)
+
+Generate a single Chancery expression.
+
+  THIS FUNCTION IS EXPERIMENTAL AND SUBJECT TO CHANGE IN THE FUTURE.
+
+  Because this is a function, not a macro, you'll need to do the quoting
+  yourself:
+
+    (define-rule x 1 2 3)
+
+    (generate (x x x))
+    ; => (1 3 3)
+
+    (invoke-generate '(x x x))
+    ; => (2 1 2)
+
+  
+
+### `INVOKE-GENERATE-STRING` (function)
+
+    (INVOKE-GENERATE-STRING EXPRESSION)
+
+Generate and stringify a single Chancery expression.
+
+  THIS FUNCTION IS EXPERIMENTAL AND SUBJECT TO CHANGE IN THE FUTURE.
+
+  Because this is a function, not a macro, you'll need to do the quoting
+  yourself:
+
+    (define-string x 1 2 3)
+
+    (generate-string (x x x))
+    ; => "1 3 3"
+
+    (invoke-generate-string '(x x x))
+    ; => "2 1 2"
+
+  
+
 ### `POS` (function)
 
     (POS STRING)
