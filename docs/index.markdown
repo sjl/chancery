@@ -1,7 +1,7 @@
 Chancery is a library for procedurally generating text and data in Common
 Lisp.  It's heavily inspired by [Tracery][].
 
-[Tracery]: http://tracery.io/
+Chancery can be installed with [Quicklisp][]: `(ql:quickload :chancery)`
 
 * **License:** MIT/X11
 * **Documentation:** <https://sjl.bitbucket.io/chancery/>
@@ -12,3 +12,6 @@ Chancery focuses on simplicity, correctness, and usability.  Performance is not
 *terrible*, but is not a high priority.
 
 It is currently not thread-safe, but this may happen in the future.
+
+[Tracery]: http://tracery.io/
+[quicklisp]: https://quicklisp.org/
