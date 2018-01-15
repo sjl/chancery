@@ -1,7 +1,7 @@
 (asdf:defsystem :chancery
   :description "A library for procedurally generating text, inspired by Tracery."
-
   :author "Steve Losh <steve@stevelosh.com>"
+  :homepage "https://sjl.bitbucket.io/chancery/"
 
   :license "MIT/X11"
   :version "1.0.0"
