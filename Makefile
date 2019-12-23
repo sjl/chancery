@@ -40,7 +40,7 @@ docs/build/index.html: $(docfiles) $(apidocs) docs/title
 docs: docs/build/index.html
 
 pubdocs: docs
-	hg -R ~/src/sjl.bitbucket.org pull -u
-	rsync --delete -a ./docs/build/ ~/src/sjl.bitbucket.org/chancery
-	hg -R ~/src/sjl.bitbucket.org commit -Am 'chancery: Update site.'
-	hg -R ~/src/sjl.bitbucket.org push
+	hg -R ~/src/docs.stevelosh.com pull -u
+	rsync --delete -a ./docs/build/ ~/src/docs.stevelosh.com/chancery
+	hg -R ~/src/docs.stevelosh.com commit -Am 'chancery: Update site.'
+	hg -R ~/src/docs.stevelosh.com push

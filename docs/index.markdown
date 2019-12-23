@@ -4,9 +4,9 @@ Lisp.  It's heavily inspired by [Tracery][].
 Chancery can be installed with [Quicklisp][]: `(ql:quickload :chancery)`
 
 * **License:** MIT/X11
-* **Documentation:** <https://sjl.bitbucket.io/chancery/>
-* **Mercurial:** <http://bitbucket.org/sjl/chancery/>
-* **Git:** <http://github.com/sjl/chancery/>
+* **Documentation:** <https://docs.stevelosh.com/chancery/>
+* **Mercurial:** <https://hg.sr.ht/~sjl/chancery/>
+* **Git:** <https://github.com/sjl/chancery/>
 
 Chancery focuses on simplicity, correctness, and usability.  Performance is not
 *terrible*, but is not a high priority.
