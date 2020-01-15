@@ -15,7 +15,7 @@ Lisp.  It's heavily inspired by [Tracery][].
 
 * **License:** MIT
 * **Documentation:** <https://docs.stevelosh.com/chancery/>
-* **Mercurial:** <https://hg.sr.ht/~sjl/chancery/>
+* **Mercurial:** <https://hg.stevelosh.com/chancery/>
 * **Git:** <https://github.com/sjl/chancery/>
 
 Chancery focuses on simplicity, correctness, and usability.  Performance is not
