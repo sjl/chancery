@@ -50,8 +50,8 @@
                                       #\A #\E #\I #\O #\U))))
 
 
-(defun prefix-sums (sequence &aux (sum 0))
-  (map 'list (lambda (n) (incf sum n)) sequence))
+(defun prefix-sums (sequence &aux (sum 0.0f0))
+  (map 'list (lambda (n) (incf sum (float n sum))) sequence))
 
 (defun separate-with-spaces (list)
   (-<> list
@@ -73,7 +73,9 @@
 
 ;;;; Weightlists --------------------------------------------------------------
 (defstruct (weightlist (:constructor %make-weightlist))
-  weights sums items total)
+  ;; items and weights are the original things passed in.
+  ;; sums and total are coerced to single floats for easier comparison.
+  items weights sums total)
 
 (defun make-weightlist (items weights)
   "Make a weightlist of the given items and weights.
@@ -86,7 +88,7 @@
     :items items
     :weights weights
     :sums (prefix-sums weights)
-    :total (apply #'+ 0.0 weights)))
+    :total (coerce (apply #'+ weights) 'single-float)))
 
 
 (defmethod print-object ((object weightlist) stream)
@@ -107,7 +109,8 @@
   (loop :with n = (chancery-random (weightlist-total weightlist))
         :for item :in (weightlist-items weightlist)
         :for weight :in (weightlist-sums weightlist)
-        :when (< n weight) :do (return item)))
+        ;; Use <= instead of < here to work around https://github.com/Clozure/ccl/issues/342
+        :when (<= n weight) :do (return item)))
 
 
 ;;;; Core ---------------------------------------------------------------------

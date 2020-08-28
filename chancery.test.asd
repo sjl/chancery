@@ -13,6 +13,5 @@
                 :serial t
                 :components ((:file "tests"))))
 
-  :perform (asdf:test-op
-             (op system)
-             (uiop:symbol-call :chancery.test :run-tests)))
+  :perform (asdf:test-op (op system)
+             (funcall (read-from-string "chancery.test:run-tests"))))

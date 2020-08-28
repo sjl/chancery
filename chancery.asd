@@ -4,7 +4,7 @@
   :homepage "https://docs.stevelosh.com/chancery/"
 
   :license "MIT/X11"
-  :version "1.0.0"
+  :version "1.0.1"
 
   :depends-on (:named-readtables)
 
